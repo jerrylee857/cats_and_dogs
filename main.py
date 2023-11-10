@@ -130,7 +130,7 @@ def train_model(lr, batch_size):
 
         valid_acc = 100 * correct_valid / total_valid
 
-        print(f"Epoch [{epoch + 1}/70], Train Loss: {train_loss / len(train_loader):.4f}, Valid Loss: {valid_loss / len(valid_loader):.4f}, Train Accuracy: {train_acc:.2f}%, Valid Accuracy: {valid_acc:.2f}%")
+        print(f"Epoch [{epoch + 1}/20], Train Loss: {train_loss / len(train_loader):.4f}, Valid Loss: {valid_loss / len(valid_loader):.4f}, Train Accuracy: {train_acc:.2f}%, Valid Accuracy: {valid_acc:.2f}%")
 
         # 更新最佳验证准确率和计数器
         if valid_acc > best_valid_acc:
