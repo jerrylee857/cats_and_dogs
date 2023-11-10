@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision import datasets, transforms, models  # 导入 models
+from torchvision import datasets, transforms
+from torchvision.models import resnet18, ResNet18_Weights  # 导入 models
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
@@ -24,22 +25,23 @@ transform = transforms.Compose([
 train_dataset = datasets.ImageFolder(root='cats_and_dogs_train', transform=transform)
 valid_dataset = datasets.ImageFolder(root='cats_and_dogs_valid', transform=transform)
 
-# 使用预训练的 ResNet
 class ResNetModel(nn.Module):
     def __init__(self):
         super(ResNetModel, self).__init__()
-        # 加载预训练的 ResNet
-        self.resnet = models.resnet18(pretrained=True)
+        # 加载预训练的 ResNet，使用新的 weights 参数
+        self.resnet = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+
         # 冻结所有层
         for param in self.resnet.parameters():
             param.requires_grad = False
 
         # 替换最后一层
         num_ftrs = self.resnet.fc.in_features
-        self.resnet.fc = nn.Linear(num_ftrs, 2)  # 2 代表猫和狗两个类别
-
+        self.resnet.fc = nn.Linear(num_ftrs, 2)
+    
     def forward(self, x):
         return self.resnet(x)
+
 
 # 初始化权重
 def weights_init(m):
