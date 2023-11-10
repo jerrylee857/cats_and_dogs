@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms, models  # 导入 models
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
@@ -12,57 +12,34 @@ else:
     print(f"CUDA is available. GPU: {torch.cuda.get_device_name(0)}, CUDA Version: {torch.version.cuda}")
 
 # 数据预处理和增强
+# 调整预处理以符合 ResNet 的输入要求
 transform = transforms.Compose([
-    transforms.RandomResizedCrop(128),
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
     transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
 # 训练集和验证集
 train_dataset = datasets.ImageFolder(root='cats_and_dogs_train', transform=transform)
 valid_dataset = datasets.ImageFolder(root='cats_and_dogs_valid', transform=transform)
 
-# 模型定义
-class ImprovedNet(nn.Module):
+# 使用预训练的 ResNet
+class ResNetModel(nn.Module):
     def __init__(self):
-        super(ImprovedNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 128, 3, padding=1)
-        self.bn3 = nn.BatchNorm2d(128)
-        self.conv4 = nn.Conv2d(128, 256, 3, padding=1)
-        self.bn4 = nn.BatchNorm2d(256)
-        self.conv5 = nn.Conv2d(256, 512, 3, padding=1)
-        self.bn5 = nn.BatchNorm2d(512)
-        self.conv6 = nn.Conv2d(512, 1024, 3, padding=1)
-        self.bn6 = nn.BatchNorm2d(1024)
-        self.conv7 = nn.Conv2d(1024, 2048, 3, padding=1)
-        self.bn7 = nn.BatchNorm2d(2048)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(2048 * 1 * 1, 2048)
-        self.fc2 = nn.Linear(2048, 1024)
-        self.fc3 = nn.Linear(1024, 512)
-        self.fc4 = nn.Linear(512, 128)
-        self.fc5 = nn.Linear(128, 2)
-        self.dropout = nn.Dropout(0.4)
+        super(ResNetModel, self).__init__()
+        # 加载预训练的 ResNet
+        self.resnet = models.resnet18(pretrained=True)
+        # 冻结所有层
+        for param in self.resnet.parameters():
+            param.requires_grad = False
+
+        # 替换最后一层
+        num_ftrs = self.resnet.fc.in_features
+        self.resnet.fc = nn.Linear(num_ftrs, 2)  # 2 代表猫和狗两个类别
 
     def forward(self, x):
-        x = self.pool(self.bn1(F.relu(self.conv1(x))))
-        x = self.pool(self.bn2(F.relu(self.conv2(x))))
-        x = self.pool(self.bn3(F.relu(self.conv3(x))))
-        x = self.pool(self.bn4(F.relu(self.conv4(x))))
-        x = self.pool(self.bn5(F.relu(self.conv5(x))))
-        x = self.pool(self.bn6(F.relu(self.conv6(x))))
-        x = self.pool(self.bn7(F.relu(self.conv7(x))))
-        x = x.view(x.size(0), -1)
-        x = self.dropout(F.relu(self.fc1(x)))
-        x = self.dropout(F.relu(self.fc2(x)))
-        x = self.dropout(F.relu(self.fc3(x)))
-        x = self.dropout(F.relu(self.fc4(x)))
-        x = self.fc5(x)
-        return x
+        return self.resnet(x)
 
 # 初始化权重
 def weights_init(m):
@@ -84,7 +61,7 @@ def train_model(lr, batch_size):
     valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
     # 模型实例化并应用权重初始化
-    model = ImprovedNet().to(device)
+    model = ResNetModel().to(device)
     model.apply(weights_init)
 
     # 优化器和损失函数
@@ -94,7 +71,7 @@ def train_model(lr, batch_size):
 
     # 训练和验证过程
     best_valid_acc = 0.0
-    for epoch in range(20):
+    for epoch in range(30):
         model.train()
         train_loss = 0.0
         correct_train = 0
@@ -130,7 +107,7 @@ def train_model(lr, batch_size):
 
         valid_acc = 100 * correct_valid / total_valid
 
-        print(f"Epoch [{epoch + 1}/20], Train Loss: {train_loss / len(train_loader):.4f}, Valid Loss: {valid_loss / len(valid_loader):.4f}, Train Accuracy: {train_acc:.2f}%, Valid Accuracy: {valid_acc:.2f}%")
+        print(f"Epoch [{epoch + 1}/30], Train Loss: {train_loss / len(train_loader):.4f}, Valid Loss: {valid_loss / len(valid_loader):.4f}, Train Accuracy: {train_acc:.2f}%, Valid Accuracy: {valid_acc:.2f}%")
 
         # 更新最佳验证准确率和计数器
         if valid_acc > best_valid_acc:

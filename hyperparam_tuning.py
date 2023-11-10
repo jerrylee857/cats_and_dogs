@@ -6,7 +6,7 @@ from main import train_model
 import itertools
 
 # 定义超参数搜索空间
-learning_rates = [0.001, 0.0005, 0.0001]
+learning_rates = [0.01, 0.001, 0.0001]
 batch_sizes = [128, 256, 512]
 
 best_acc = 0
